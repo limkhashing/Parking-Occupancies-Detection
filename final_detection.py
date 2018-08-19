@@ -1,5 +1,6 @@
 import cv2
 import numpy as np
+import os
 import firebase_admin
 from firebase_admin import credentials, firestore
 
@@ -23,18 +24,19 @@ def auto_canny(image, sigma=0.33):
 # default_app = firebase_admin.initialize_app(cred)
 # db = firestore.client()
 #
-# parking_ref = db.collection(u'spotpark')
+# parking_ref = db.collection(u'spotpark') #same with android syntax for CRUD
 # docs = parking_ref.get()
 #
 # for doc in docs:
 #     print(u'{} => {}'.format(doc.id, doc.to_dict()))
 
-cap = cv2.VideoCapture(1)
+cap = cv2.VideoCapture(0)
 kernel = np.ones((3, 3), np.uint8)
 
 min_width = 200
 max_width = 500
 threshold_detection = 4000
+img_counter = 0
 
 # TODO car plate number detection
 while True:
@@ -77,7 +79,7 @@ while True:
         if len(approx) == 4:
             x, y, w, h = cv2.boundingRect(contour)
 
-            # TODO change the width value on different camera position
+            # TODO change the width value depending on camera position
             if w > min_width and w < max_width:
                 # Debugging for the rect width
                 # print(w)
@@ -99,11 +101,26 @@ while True:
                 # TODO change the value of threshold_detection accordingly
                 # TODO update firestore value occupancy
                 if roi_value > threshold_detection:
-                    print(str(number_box) + " got car")
+
+                    # After Detect taken space
+                    # Delay 1 minutes, demo purpose delay 5 sec
+
+                    print(str(number_box) + " got parked car")
                     cv2.rectangle(frame, (x, y), (x + w, y + h), (0, 0, 255), 2)
+
+                    cv2.imwrite("parking_car.jpg", frame)
+                    # TODO check detected OCR. Must minimum 4 characters
+                    # detect_text("parking_car.jpg")
+                    # Send to the corresponding parking space db number (if number == 1)
+                    # set Available = false
+
+
                 else:
+                    # If no more taken, same delay
                     print(str(number_box) + " no car")
                     cv2.rectangle(frame, (x, y), (x + w, y + h), (0, 255, 0), 2)
+                    # delete plate number in corresponding parking space db number
+                    # set Available = true
 
                 number_box += 1
 
