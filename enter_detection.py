@@ -3,15 +3,22 @@ import numpy as np
 import firebase_admin
 import os
 import io
-import time
+import json
 from firebase_admin import credentials, firestore
 from datetime import datetime
 from google.cloud import vision
 
-# TODO firebase firestore initialization
-# TODO car plate number detection check
-
+# Initialize Cloud Vision API and Firebase Admin SDK
 os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = 'google_vision.json'
+cred = credentials.Certificate("ServiceAccountKey.json")
+default_app = firebase_admin.initialize_app(cred)
+db = firestore.client()
+
+# Parking Records Collection
+parking_records_collection = db.collection(u'parking_records')
+
+# Car Plate Numbers Collection
+car_plate_uid_docs = db.collection(u'car_plate_numbers').get()
 
 
 # Function that return canny detection
@@ -45,47 +52,94 @@ def detect_text(frame):
     print('Texts:')
 
     for text in texts:
-        print('\n"{}"'.format(text.description))
-
-        vertices = (['({},{})'.format(vertex.x, vertex.y)
-                    for vertex in text.bounding_poly.vertices])
-
-        print('bounds: {}'.format(','.join(vertices)))
+        if len(text.description) == 4:
+            # print(text.description)
+            return text.description
 
     # [END vision_python_migration_text_detection]
 # [END vision_text_detection]
 
 
-car_threshold_value = 5000
+# For canny detection, translate the frame to grayscale and to canny edge detection
+# then detect the status of occupancy
+car_threshold_value = 1000
 cap = cv2.VideoCapture(0)
-img_counter = 0
+
 while True:
     ret, frame = cap.read()
-
-    # For canny detection, translate the frame to grayscale
-    # then detect the status of occupancy
     gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
     blurred = cv2.GaussianBlur(gray, (5, 5), 0)
     canny = auto_canny(blurred)
-
     canny_value = cv2.countNonZero(canny)
-    print(canny_value)
-    # TODO change detection value accordingly
+    # print(canny_value)
+
+    # For debugging purpose. Checks onto cloud vision api and Firestore
+    # k = cv2.waitKey(1)
+    # if k%256 == 32:
+    #     img_name = "enter_car.jpg"
+    #     cv2.imwrite(img_name, frame)
+    #     car_plate_number = detect_text("enter_car.jpg")
+    #     print(car_plate_number)
+    #
+    #     # Check the car plate number is registed or not in existing user
+    #     # Find car plate numbers in car_plate_collection of UID document
+    #     for doc in car_plate_uid_docs:
+    #         # See json.dumps() as a save method
+    #         # See json.loads() as a retrieve method
+    #         json_dump = json.dumps(doc.to_dict())
+    #         json_load = json.loads(json_dump)
+    #
+    #         for value in json_load['plate_numbers']:
+    #             if value == car_plate_number:
+    #                 # found car plate numbers of UID document
+    #                 data = {
+    #                     u'UID': doc.id,
+    #                     u'plate_number': car_plate_number,
+    #                     u'date': '',
+    #                     u'start_time': datetime.time(datetime.now().replace(microsecond=0)).isoformat(),
+    #                     u'end_time': '',
+    #                     u'duration': '',
+    #                     u'space': '',
+    #                     u'paid_parking_fee': ''
+    #                 }
+    #                 parking_records_collection.add(data)
+    #
+    #                 # For Debugging purpose. Display the json value
+    #                 # print(doc.id)
+    #                 # print(car_plate_number)
+    #                 # print(datetime.time(datetime.now().replace(microsecond=0)))
+
     if canny_value > car_threshold_value:
         # Means got car
-        print("got enter car")
+        # print("got enter car")
         cv2.imwrite("enter_car.jpg", frame)
-        # detect_text("enter_car.jpg")
-        # TODO check detected OCR. Must minimum 4 characters
-        # TODO send to firestore, Check exist user
+        car_plate_number = detect_text("enter_car.jpg")
+        print(car_plate_number)
 
-        # if got, Send enter time to db
-        # after send open barrier
-        # Delay 3 second, close barrier
-        print(datetime.time(datetime.now().replace(microsecond=0)))
-        print("Open Barrier")
-        time.sleep(4)
-        print("Close Barrier")
+        # Check the car plate number is registed or not in existing user
+        # Find car plate numbers in car_plate_collection of UID document
+        for doc in car_plate_uid_docs:
+            # See json.dumps() as a save method
+            # See json.loads() as a retrieve method
+            json_dump = json.dumps(doc.to_dict())
+            json_load = json.loads(json_dump)
+
+            for value in json_load['plate_numbers']:
+                if value == car_plate_number:
+                    # found car plate numbers of UID document
+                    data = {
+                        u'UID': doc.id,
+                        u'plate_number': car_plate_number,
+                        u'date': '',
+                        u'start_time': datetime.time(datetime.now().replace(microsecond=0)).isoformat(),
+                        u'end_time': '',
+                        u'duration': '',
+                        u'space': '',
+                        u'paid_parking_fee': ''
+                    }
+                    parking_records_collection.add(data)
+            print("Open Barrier")
+            print("Close Barrier")
 
     cv2.imshow('Final Outcome', frame)
     cv2.imshow('canny', canny)
