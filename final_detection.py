@@ -1,44 +1,13 @@
-import cv2
-import numpy as np
-import os
-import firebase_admin
-from firebase_admin import credentials, firestore
+from utility import *
+import pymysql
 
-# Function that return canny detection
-def auto_canny(image, sigma=0.33):
-    # compute the median of the single channel pixel intensities
-    v = np.median(image)
-
-    # apply automatic Canny edge detection using the computed median
-    # In practice, sigma=0.33  tends to give good results on most of the dataset
-    lower = int(max(0, (1.0 - sigma) * v))
-    upper = int(min(255, (1.0 + sigma) * v))
-    edged = cv2.Canny(image, lower, upper)
-
-    # return the edged image
-    return edged
-
-# TODO firebase firestore initialization
-# Initialize Firebase Admin SDK
-# cred = credentials.Certificate("ServiceAccountKey.json")
-# default_app = firebase_admin.initialize_app(cred)
-# db = firestore.client()
-#
-# parking_ref = db.collection(u'spotpark') #same with android syntax for CRUD
-# docs = parking_ref.get()
-#
-# for doc in docs:
-#     print(u'{} => {}'.format(doc.id, doc.to_dict()))
-
-cap = cv2.VideoCapture(0)
+cap = cv2.VideoCapture(1)
 kernel = np.ones((3, 3), np.uint8)
 
 min_width = 200
 max_width = 500
 threshold_detection = 4000
-img_counter = 0
 
-# TODO car plate number detection
 while True:
     ret, frame = cap.read()
     hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
@@ -98,38 +67,52 @@ while True:
                 # print(park1)
                 # cv2.imshow('roi', roi)
 
-                # TODO change the value of threshold_detection accordingly
-                # TODO update firestore value occupancy
+                # check got car park or not
                 if roi_value > threshold_detection:
-
-                    # After Detect taken space
-                    # Delay 1 minutes, demo purpose delay 5 sec
-
-                    print(str(number_box) + " got parked car")
+                    time.sleep(5)
+                    # print(str(number_box) + " got parked car")
                     cv2.rectangle(frame, (x, y), (x + w, y + h), (0, 0, 255), 2)
 
                     cv2.imwrite("parking_car.jpg", frame)
-                    # TODO check detected OCR. Must minimum 4 characters
-                    # detect_text("parking_car.jpg")
-                    # Send to the corresponding parking space db number (if number == 1)
-                    # set Available = false
+                    car_plate_number = detect_text("parking_car.jpg")
+                    print("Parked Car Plate Number : ", car_plate_number)
 
+                    if car_plate_number is not None:
 
+                        conn = pymysql.connect(host=host, user=user, password=pw, db=db)
+                        cursor = conn.cursor()
+
+                        # check the user is registered or not
+                        select_sql = "SELECT UID FROM car_plate_numbers WHERE plate_number = (%s)"
+                        cursor.execute(select_sql, car_plate_number)
+                        # print("Retrieve UID with match plate number : ", cursor.rowcount)
+
+                        if cursor.rowcount is not 0:
+                            results = cursor.fetchone()
+                            UID = results[0]
+                            # print("UID: ", UID)
+
+                            update_sql = "UPDATE parking_spaces SET plate_number = (%s), UID = (%s), status = 0 WHERE space = (%s)"
+                            cursor.execute(update_sql, (car_plate_number, UID, number_box))
+                            conn.commit()
+                            print("Updated parking space status")
                 else:
-                    # If no more taken, same delay
-                    print(str(number_box) + " no car")
+                    time.sleep(5)
+                    conn = pymysql.connect(host=host, user=user, password=pw, db=db)
+                    cursor = conn.cursor()
+                    update_sql = "UPDATE parking_spaces SET plate_number = NULL, UID = NULL, status = 1 WHERE space = (%s)"
+                    cursor.execute(update_sql, number_box)
+                    # print(str(number_box) + " no car")
                     cv2.rectangle(frame, (x, y), (x + w, y + h), (0, 255, 0), 2)
-                    # delete plate number in corresponding parking space db number
-                    # set Available = true
 
                 number_box += 1
 
+    # cv2.imshow('gray', gray)
+    # cv2.imshow('blurred', blurred)
+    # cv2.imshow('canny', canny)
+    # cv2.imshow('hsv', hsv)
+    # cv2.imshow('Mask', mask)
     cv2.imshow('Final Outcome', frame)
-    cv2.imshow('canny', canny)
-    cv2.imshow('Mask', mask)
-    cv2.imshow('hsv', hsv)
-    cv2.imshow('gray', gray)
-    cv2.imshow('blurred', blurred)
 
     if cv2.waitKey(1) & 0xFF == ord('q'):
         break

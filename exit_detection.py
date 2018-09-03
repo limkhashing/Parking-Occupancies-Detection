@@ -1,94 +1,172 @@
-import cv2
-import numpy as np
-import firebase_admin
-import io
-import os
-import time
-from firebase_admin import credentials, firestore
-from google.cloud import vision
+from utility import *
+import pymysql
 from datetime import datetime
 
-# TODO firebase firestore initialization
-# TODO car plate number detection check
-
-
-# Function that return canny detection
-def auto_canny(image, sigma=0.33):
-    # compute the median of the single channel pixel intensities
-    v = np.median(image)
-
-    # apply automatic Canny edge detection using the computed median
-    # In practice, sigma=0.33  tends to give good results on most of the dataset
-    lower = int(max(0, (1.0 - sigma) * v))
-    upper = int(min(255, (1.0 + sigma) * v))
-    edged = cv2.Canny(image, lower, upper)
-
-    # return the edged image
-    return edged
-
-
-# [START vision_text_detection]
-def detect_text(frame):
-    """Detects text in the file."""
-    client = vision.ImageAnnotatorClient()
-
-    # [START vision_python_migration_text_detection]
-    with io.open(frame, 'rb') as image_file:
-        content = image_file.read()
-
-    image = vision.types.Image(content=content)
-
-    response = client.text_detection(image=image)
-    texts = response.text_annotations
-    print('Texts:')
-
-    for text in texts:
-        print('\n"{}"'.format(text.description))
-
-        vertices = (['({},{})'.format(vertex.x, vertex.y)
-                    for vertex in text.bounding_poly.vertices])
-
-        print('bounds: {}'.format(','.join(vertices)))
-
-    # [END vision_python_migration_text_detection]
-# [END vision_text_detection]
-
-
-car_threshold_value = 5000
+car_threshold_value = 1000
 cap = cv2.VideoCapture(0)
-cap.set(cv2.CAP_PROP_FRAME_WIDTH, 1024)
-cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 768)
+temp_car_plate_number = ""
+
 while True:
     ret, frame = cap.read()
-    width = cap.get(cv2.CAP_PROP_FRAME_WIDTH)   # float
-    height = cap.get(cv2.CAP_PROP_FRAME_HEIGHT) # float
-    print(height)
-    print(width)
-    # For canny detection, translate the frame to grayscale
-    # then detect the status of occupancy
     gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
     blurred = cv2.GaussianBlur(gray, (5, 5), 0)
     canny = auto_canny(blurred)
-
     canny_value = cv2.countNonZero(canny)
-    print(canny_value)
-    # TODO change detection value accordingly
-    if (canny_value > car_threshold_value):
-        # Means got car
-        print("got exit car")
-        cv2.imwrite("exit_car.jpg", frame)
-        # detect_text("exit_car.jpg")
-        # TODO check detected OCR. Must minimum 4 characters
-        # TODO Check parking record db exist user, got enter time and no exit time
+    # print(canny_value)
 
-        # if true, send exit time
-        # Calculate payment fees
-        # Auto pay
-        # after pay, open barrier, delay 4 second, close barrier
-        print(datetime.time(datetime.now().replace(microsecond=0)))
-        print("Open Barrier")
-        # time.sleep(4)
-        print("Close Barrier")
+    # For debugging purpose. Checks onto cloud vision api
+    # spacebar to take photo
+    k = cv2.waitKey(1)
+    if k%256 == 32:
+        time.sleep(3)
+        cv2.imwrite("exit_car.jpg", frame)
+        car_plate_number = detect_text("exit_car.jpg")
+        print("Exit Car Plate Number : " , car_plate_number)
+
+        # if is not null
+        if car_plate_number is not None:
+
+            # check car plate number is same with previous
+            if temp_car_plate_number != car_plate_number:
+
+                conn = pymysql.connect(host=host, user=user, password=pw, db=db)
+                cursor = conn.cursor()
+
+                select_sql = "SELECT records_ID, start_time FROM parking_records WHERE plate_number = (%s) AND end_time IS NULL"
+                cursor.execute(select_sql, car_plate_number)
+                print("Found records : ", cursor.rowcount)
+
+                # check got matching result or not in parking_records
+                # plate_number must match end_time is null
+                if cursor.rowcount is not 0:
+                    results = cursor.fetchone()
+                    records_ID = results[0]
+                    start_time = results[1]
+                    end_time = datetime.time(datetime.now().replace(microsecond=0)).isoformat()
+
+                    print("records_ID: ", records_ID)
+                    print("start_time: ", start_time)
+                    print("end_time: ", end_time)
+
+                    # get time interval (duration)
+                    FMT = '%H:%M:%S'
+                    duration = datetime.strptime(end_time, FMT) - datetime.strptime(start_time, FMT)
+                    print("Duration: ", duration)
+
+                    # get individual duration. hour minutes seconds
+                    string_duration = list(map(int, f'{duration}'.split(":")))
+                    hour = string_duration[0]
+                    minutes = string_duration[1]
+                    seconds = string_duration[2]
+
+                    # retrieve active(1) parking rates
+                    rates_sql = "SELECT active, first_hour, following_two_hour, following_fourth_hour FROM parking_rates WHERE active = 1"
+                    cursor.execute(rates_sql)
+
+                    # if got result from query retrieve active parking rates
+                    if cursor.rowcount is not 0:
+                        results = cursor.fetchone()
+                        first_hour = results[1]
+                        following_two_hour = results[2]
+                        following_fourth_hour = results[3]
+
+                        # calculate parking fees
+                        parking_fees = 0
+                        if hour < 1:
+                            parking_fees = first_hour
+                        elif hour <= 2:
+                            parking_fees = first_hour + following_two_hour
+                        elif hour >= 3:
+                            parking_fees = first_hour + following_two_hour
+                            for parking_fees in range(hour):
+                                parking_fees += following_fourth_hour
+
+                        # update the parking record with end_time, duration, and parking_fees
+                        update_sql = "UPDATE parking_records SET end_time = (%s), duration = (%s), paid_parking_fee = (%s) WHERE records_ID = (%s)"
+                        cursor.execute(update_sql,
+                                       (end_time, f'{duration}', parking_fees, records_ID))
+                        conn.commit()
+                        print("Updated record")
+                        print("Open Barrier")
+                        # TODO Auto pay at mobile app then only updatre records
+                        print("Close Barrier")
+                        temp_car_plate_number = car_plate_number
+    # Check got car exit or not
+    # if canny_value > car_threshold_value:
+    #     # print("got exit car")
+    #     time.sleep(3)
+    #     cv2.imwrite("exit_car.jpg", frame)
+    #     car_plate_number = detect_text("enter_car.jpg")
+    #     print("Exit Car Plate Number : " , car_plate_number)
+    #
+    #     # if is not null
+    #     if car_plate_number is not None:
+    #
+    #         # check car plate number is same with previous
+    #         if temp_car_plate_number != car_plate_number:
+    #
+    #             conn = pymysql.connect(host=host, user=user, password=pw, db=db)
+    #             cursor = conn.cursor()
+    #
+    #             select_sql = "SELECT records_ID, start_time FROM parking_records WHERE plate_number = (%s) AND end_time IS NULL"
+    #             cursor.execute(select_sql, car_plate_number)
+    #             print("Found records : ", cursor.rowcount)
+    #
+    #             # check got matching result or not in parking_records
+    #             # plate_number must match end_time is null
+    #             if cursor.rowcount is not 0:
+    #                 results = cursor.fetchone()
+    #                 records_ID = results[0]
+    #                 start_time = results[1]
+    #                 end_time = datetime.time(datetime.now().replace(microsecond=0)).isoformat()
+    #
+    #                 print("records_ID: ", records_ID)
+    #                 print("start_time: ", start_time)
+    #                 print("end_time: ", end_time)
+    #
+    #                 # get time interval (duration)
+    #                 FMT = '%H:%M:%S'
+    #                 duration = datetime.strptime(end_time, FMT) - datetime.strptime(start_time, FMT)
+    #                 print("Duration: ", duration)
+    #
+    #                 # get individual duration. hour minutes seconds
+    #                 string_duration = list(map(int, f'{duration}'.split(":")))
+    #                 hour = string_duration[0]
+    #                 minutes = string_duration[1]
+    #                 seconds = string_duration[2]
+    #
+    #                 # retrieve active(1) parking rates
+    #                 rates_sql = "SELECT active, first_hour, following_two_hour, following_fourth_hour FROM parking_rates WHERE active = 1"
+    #                 cursor.execute(rates_sql)
+    #
+    #                 # if got result from query retrieve active parking rates
+    #                 if cursor.rowcount is not 0:
+    #                     results = cursor.fetchone()
+    #                     first_hour = results[1]
+    #                     following_two_hour = results[2]
+    #                     following_fourth_hour = results[3]
+    #
+    #                     # calculate parking fees
+    #                     parking_fees = 0
+    #                     if hour < 1:
+    #                         parking_fees = first_hour
+    #                     elif hour <= 2:
+    #                         parking_fees = first_hour + following_two_hour
+    #                     elif hour >= 3:
+    #                         parking_fees = first_hour + following_two_hour
+    #                         for parking_fees in range(hour):
+    #                             parking_fees += following_fourth_hour
+    #
+    #                     # update the parking record with end_time, duration, and parking_fees
+    #                     update_sql = "UPDATE parking_records SET end_time = (%s), duration = (%s), paid_parking_fee = (%s) WHERE records_ID = (%s)"
+    #                     cursor.execute(update_sql,
+    #                                    (end_time, f'{duration}', parking_fees, records_ID))
+    #                     conn.commit()
+    #                     print("Updated record")
+    #                     print("Open Barrier")
+    #                     # TODO Auto pay at mobile app then only updatre records
+    #                     print("Close Barrier")
+    #                     temp_car_plate_number = car_plate_number
 
     cv2.imshow('Final Outcome', frame)
     cv2.imshow('canny', canny)
