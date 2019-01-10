@@ -5,6 +5,10 @@ This repo will install into CCTV cameras for detecting vacant parking slot and a
 It utilize OpenCV library and Google Cloud Vision API in helping detect parking spaces and extract car plat numbers
 The car plate number will be stored in MySQL database.
 
+For a demo on how car plate number is detected, please see the YouTube video 
+https://youtu.be/L6TEvo5vyVs
+
+
 ### Outlines
 * utility.py -- Consist of reuse code in other py file
 * google_vision_api.py -- Consist of vision_text_detection (OCR) function
