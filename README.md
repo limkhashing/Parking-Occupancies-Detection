@@ -25,4 +25,4 @@ https://youtu.be/L6TEvo5vyVs
 * Python programming language
 
 ## Authors
-* **Lim Kha Shing** - [kslim888](https://www.linkedin.com/in/lim-kha-shing-836a24120/)
+* [**Lim Kha Shing**](https://www.linkedin.com/in/lim-kha-shing-836a24120/)
