@@ -20,6 +20,15 @@ https://youtu.be/L6TEvo5vyVs
 * CCTV Cameras 
 * A sample parking slots, which can draw on a piece of paper
 
+#### Detecting vehicle at entrance
+![image](https://user-images.githubusercontent.com/30791939/54375819-ba020000-46bc-11e9-8af1-410d0aea03f4.png)
+
+#### Detecting Car Plate Number
+![image](https://user-images.githubusercontent.com/30791939/54375894-e1f16380-46bc-11e9-929f-6a254201b374.png)
+
+#### Occupancies Dection
+![image](https://user-images.githubusercontent.com/30791939/54376034-1d8c2d80-46bd-11e9-96bf-126dfa24d5fa.png)
+
 ## Built With
 * [PyCharm](https://www.jetbrains.com/pycharm/) - The IDE used
 * Python programming language
