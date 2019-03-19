@@ -11,7 +11,6 @@ https://youtu.be/L6TEvo5vyVs
 
 ### Outlines
 * utility.py -- Consist of reuse code in other py file
-* google_vision_api.py -- Consist of vision_text_detection (OCR) function
 * enter_detection.py -- Responsible for detecting cars at entry gate
 * exit_detection.py -- Responsible for detecting cars at exit gate
 * final_detection.py -- Responsible for detecting cars at parking spaces, and determine the vacancy of it
