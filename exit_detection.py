@@ -3,7 +3,7 @@ import pymysql
 from datetime import datetime
 
 car_threshold_value = 1000
-cap = cv2.VideoCapture(1)
+cap = cv2.VideoCapture(0)
 temp_car_plate_number = ""
 
 while True:

@@ -5,7 +5,7 @@ from datetime import datetime
 # For canny detection, translate the frame to grayscale and to canny edge detection
 # then detect the status of occupancy
 car_threshold_value = 1000
-cap = cv2.VideoCapture(1)
+cap = cv2.VideoCapture(0)
 temp_car_plate_number = ""
 
 while True:
@@ -94,6 +94,8 @@ while True:
                         print("Inserted new record")
                         print("Close Barrier")
                         temp_car_plate_number = car_plate_number
+                    else:
+                        print("Car is not registered in the system")
                 else:
                     print("Connection with db is not open")
 
