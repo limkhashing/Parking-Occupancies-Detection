@@ -165,7 +165,7 @@ while True:
                             conn.commit()
                             print("Updated record")
                             print("Open Barrier")
-                            # TODO Auto pay at mobile app then only updatre records
+                            # TODO Auto pay at mobile app then only update records
                             print("Close Barrier")
                             temp_car_plate_number = car_plate_number
                 else:
