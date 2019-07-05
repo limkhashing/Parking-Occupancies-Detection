@@ -31,7 +31,9 @@ https://youtu.be/L6TEvo5vyVs
 
 ## Built With
 * [PyCharm](https://www.jetbrains.com/pycharm/) - The IDE used
-* Python programming language
+* Python
+* pymysql
+* OCR feature from Google Cloud Vision API 
 
 ## Authors
 * [**Lim Kha Shing**](https://www.linkedin.com/in/lim-kha-shing-836a24120/)
