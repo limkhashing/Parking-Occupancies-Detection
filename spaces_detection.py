@@ -32,7 +32,7 @@ while True:
                                  , cv2.THRESH_BINARY, 15, 4)
 
     # find contours
-    _, contours, _ = cv2.findContours(mask, cv2.RETR_TREE, cv2.CHAIN_APPROX_NONE)
+    contours, hierarchy  = cv2.findContours(mask, cv2.RETR_TREE, cv2.CHAIN_APPROX_NONE)
     hull = [cv2.convexHull(c) for c in contours]
 
     # sort the contours
