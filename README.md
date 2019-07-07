@@ -1,8 +1,11 @@
 # PythonSpotPark
+![python-standard-style](https://img.shields.io/appveyor/ci/gruntjs/grunt.svg)
+![Python Version](https://img.shields.io/pypi/pyversions/Django.svg)
+![pypi](https://img.shields.io/pypi/v/nine.svg)
+> This project is used conjunction with mobile application [SpotPark](https://github.com/kslim888/SpotPark) for implement an Indoor Parking System. This repo will install into CCTV cameras for detecting vacant parking slot and also act as a surveillanc in the indoor parking area.
 
-This project is used conjunction with mobile application [SpotPark](https://github.com/kslim888/SpotPark) for implement an Indoor Parking System
-This repo will install into CCTV cameras for detecting vacant parking slot and also act as a surveillanc in the indoor parking area.
-It utilize OpenCV library and Google Cloud Vision API in helping detect parking spaces and extract car plat numbers
+## Tech used
+OpenCV and Google Cloud Vision API is used in helping detect parking spaces and extract car plat numbers
 The car plate number will be stored in MySQL database.
 
 For a demo on how car plate number is detected, please see the YouTube video 
@@ -30,7 +33,9 @@ https://youtu.be/L6TEvo5vyVs
 
 ## Built With
 * [PyCharm](https://www.jetbrains.com/pycharm/) - The IDE used
-* Python programming language
+* Python
+* pymysql
+* OCR feature from Google Cloud Vision API 
 
 ## Authors
 * [**Lim Kha Shing**](https://www.linkedin.com/in/lim-kha-shing-836a24120/)
