@@ -1,5 +1,4 @@
 # PythonSpotPark
-![python-standard-style](https://img.shields.io/appveyor/ci/gruntjs/grunt.svg)
 ![Python Version](https://img.shields.io/pypi/pyversions/Django.svg)
 ![pypi](https://img.shields.io/pypi/v/nine.svg)
 > This project is used conjunction with mobile application [SpotPark](https://github.com/limkhashing/SpotPark) for implement an Indoor Parking System. This repo will install into CCTV cameras for detecting vacant parking slot and also act as a surveillanc in the indoor parking area.
