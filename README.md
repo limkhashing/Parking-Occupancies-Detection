@@ -4,7 +4,7 @@
 > This project is used conjunction with mobile application [SpotPark](https://github.com/limkhashing/SpotPark) for implement an Indoor Parking System. This repo will install into CCTV cameras for detecting vacant parking slot and also act as a surveillanc in the indoor parking area.
 
 ## Tech used
-OpenCV and Google Cloud Vision API is used in helping detect parking spaces and extract car plat numbers
+OpenCV and Google Cloud Vision API is used in helping detect parking spaces and extract car plat numbers.
 The car plate number will be stored in MySQL database.
 
 For a demo on how car plate number is detected, please see the YouTube video 
